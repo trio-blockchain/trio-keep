@@ -25,8 +25,13 @@ jobs:
       - name: Check out TrioKeep
         uses: actions/checkout@v4
 
+      - name: Select Xcode 26.3
+        run: sudo xcode-select --switch /Applications/Xcode_26.3.app/Contents/Developer
+
       - name: Show Xcode version
-        run: xcodebuild -version
+        run: |
+          xcodebuild -version
+          swift --version
 
       - name: Create build-only Firebase configuration
         shell: bash
