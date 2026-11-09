@@ -70,6 +70,8 @@ private extension WalletConnectRedirectRouter {
             "tonkeeper-mob",
             "tonkeeper-tc",
             "tonkeeper-tc-mob",
+            "triokeep-tc",
+            "triokeep-tc-mob",
             "wc",
         ]
     }

@@ -1,6 +1,22 @@
-# Keeper iOS
+# TrioKeep for iOS
+
+TrioKeep is the Trio-only iOS wallet forked from [`tonkeeper/ios`](https://github.com/tonkeeper/ios). It keeps the TON wallet implementation as its base and connects to the independent Trio L1 using chain ID `1414678863` (`0x5452494f`). The app exposes one supported network, Trio; TON wallets for the TON side of the bridge remain separate.
+
+This repository is derived from Tonkeeper and remains distributed under the upstream GPL-3.0 license. See [LICENSE](LICENSE) for the complete terms.
+
+The fork is under active development and is not yet a release build. Trio RPC, bridge price feed, and transaction services must be available before balances or transfers can be treated as live.
+
+## Development
 
 This directory is the iOS app; every command below runs from `ios/` (`cd ios`, or `make -C ios <target>` from the repository root).
+
+## GitHub Actions build
+
+The `TrioKeep iOS simulator build` workflow builds an unsigned app for the iOS Simulator
+on pushes to `main` and `codex/**`, pull requests, or a manual run. Download the
+`TrioKeep-iOS-simulator-*` artifact from the Actions run. CI generates a build-only
+Firebase plist; the artifact is for simulator review and is not a signed iPhone or
+App Store release.
 
 ## Setup
 

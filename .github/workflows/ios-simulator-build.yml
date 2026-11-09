@@ -1,0 +1,94 @@
+name: TrioKeep iOS simulator build
+
+on:
+  push:
+    branches:
+      - main
+      - codex/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triokeep-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - name: Check out TrioKeep
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Create build-only Firebase configuration
+        shell: bash
+        run: |
+          mkdir -p Keeper/Resources/Firebase/Keeper
+          cat > Keeper/Resources/Firebase/Keeper/GoogleService-Info.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>GOOGLE_APP_ID</key>
+            <string>1:000000000000:ios:0000000000000000000000</string>
+            <key>GCM_SENDER_ID</key>
+            <string>000000000000</string>
+            <key>BUNDLE_ID</key>
+            <string>com.investortonnft.triokeep</string>
+            <key>PROJECT_ID</key>
+            <string>triokeep-ci-build-only</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Resolve Swift packages
+        env:
+          CLONED_SOURCE_PACKAGES_DIR: ${{ github.workspace }}/build/SourcePackages
+          XCODE_XCCONFIG_FILE: ${{ github.workspace }}/Configurations/PackageBuildSettings.xcconfig
+        run: |
+          mkdir -p build/SourcePackages
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project Keeper.xcodeproj \
+            -scheme Keeper \
+            -clonedSourcePackagesDirPath build/SourcePackages
+
+      - name: Build TrioKeep for iOS Simulator
+        env:
+          CLONED_SOURCE_PACKAGES_DIR: ${{ github.workspace }}/build/SourcePackages
+          XCODE_XCCONFIG_FILE: ${{ github.workspace }}/Configurations/PackageBuildSettings.xcconfig
+        run: |
+          xcodebuild \
+            -project Keeper.xcodeproj \
+            -scheme Keeper \
+            -configuration KeeperDebug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package simulator app
+        shell: bash
+        run: |
+          app_path="$(find build/DerivedData/Build/Products/KeeperDebug-iphonesimulator -maxdepth 1 -type d -name '*.app' -print -quit)"
+          test -n "$app_path"
+          mkdir -p build/artifacts
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" build/artifacts/TrioKeep-simulator.zip
+
+      - name: Upload simulator build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrioKeep-iOS-simulator-${{ github.run_number }}
+          path: build/artifacts/TrioKeep-simulator.zip
+          if-no-files-found: error
+          retention-days: 14

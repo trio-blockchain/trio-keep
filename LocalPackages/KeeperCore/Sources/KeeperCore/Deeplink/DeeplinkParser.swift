@@ -107,6 +107,7 @@ public struct DeeplinkParser: Sendable {
             "https://app.keeperwallet.com/",
             "https://tonhub.com/",
             "tonkeeper-tc-mob://",
+            "triokeep-tc-mob://",
         ]
 
         guard let prefix = deeplinkPrefixes.first(where: { string.hasPrefix($0) }) else {
@@ -130,6 +131,8 @@ public struct DeeplinkParser: Sendable {
             "tc://",
             "tonkeeper-tc://",
             "tonkeeper-tc-mob://",
+            "triokeep-tc://",
+            "triokeep-tc-mob://",
         ]
 
         guard let prefix = tonconnectDeeplinkPrefixes.first(where: { string.hasPrefix($0) }) else {

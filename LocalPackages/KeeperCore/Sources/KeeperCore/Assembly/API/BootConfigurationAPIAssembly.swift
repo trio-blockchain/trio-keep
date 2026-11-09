@@ -23,10 +23,10 @@ final class BootConfigurationAPIAssembly {
     }
 
     var apiV1BootURL: URL {
-        URL(string: "https://boot.tonkeeper.com")!
+        URL(string: "https://investortonnft.com")!
     }
 
     var apiV1BlockURL: URL {
-        URL(string: "https://block.tonkeeper.com")!
+        URL(string: "https://investortonnft.com")!
     }
 }

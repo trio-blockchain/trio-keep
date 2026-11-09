@@ -2,7 +2,7 @@ import Foundation
 import TonSwift
 
 @frozen public enum Network: Int, Hashable {
-    case mainnet = -239
+    case mainnet = 1414678863
     case testnet = -3
 
     public var isMainnet: Bool {
@@ -41,5 +41,5 @@ extension Network: CellCodable {
 }
 
 private extension Int {
-    static let rawValueLength = 16
+    static let rawValueLength = 32
 }

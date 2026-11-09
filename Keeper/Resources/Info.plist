@@ -87,6 +87,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>tonkeeper-tc</string>
+				<string>triokeep-tc</string>
 			</array>
 		</dict>
 		<dict>
@@ -95,6 +96,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>tonkeeper-tc-mob</string>
+				<string>triokeep-tc-mob</string>
 			</array>
 		</dict>
 		<dict>
@@ -113,6 +115,7 @@
 		<string>tg</string>
 		<string>tonsign</string>
 		<string>ledgerlive</string>
+		<string>triokeep-tc</string>
 	</array>
 	<key>NSSupportsLiveActivities</key>
 	<true/>

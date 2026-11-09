@@ -157,7 +157,7 @@ public final class MultichainAssembly {
         }
     )
 
-    public private(set) lazy var supportedChains: [MultichainChain] = MultichainChain.displayOrder
+    public private(set) lazy var supportedChains: [MultichainChain] = [.ton]
 
     public private(set) lazy var newChainBadgeService: NewChainBadgeService = NewChainBadgeServiceImplementation()
 

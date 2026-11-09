@@ -19,7 +19,7 @@ extension MultichainChain {
     var badgeTitle: String {
         switch self {
         case .ton:
-            "TON"
+            "TRIO"
         case .eth:
             "ETHEREUM"
         case .btc:
@@ -46,7 +46,7 @@ extension MultichainChain {
     var symbol: String {
         switch self {
         case .ton:
-            "TON"
+            "TRI"
         case .eth:
             "ETH"
         case .btc:
@@ -73,7 +73,7 @@ extension MultichainChain {
     var tokenType: String {
         switch self {
         case .ton:
-            "TON"
+            "TRIO"
         case .eth:
             "ERC20"
         case .btc:
@@ -96,7 +96,7 @@ extension MultichainChain {
     var tokenIcon20: UIImage {
         switch self {
         case .ton:
-            .TKUIKit.Icons.Size20.tonChain
+            UIImage(named: "TrioChain") ?? .TKUIKit.Icons.Size20.tonChain
         case .eth:
             .TKUIKit.Icons.Size20.ethChain
         case .btc:
@@ -123,7 +123,7 @@ extension MultichainChain {
     var tokenIcon44: UIImage {
         switch self {
         case .ton:
-            .TKUIKit.Icons.Size44.tonChain
+            UIImage(named: "TrioChain") ?? .TKUIKit.Icons.Size44.tonChain
         case .eth:
             .TKUIKit.Icons.Size44.ethChain
         case .btc:
