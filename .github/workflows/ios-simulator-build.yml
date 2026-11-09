@@ -52,7 +52,6 @@ jobs:
       - name: Resolve Swift packages
         env:
           CLONED_SOURCE_PACKAGES_DIR: ${{ github.workspace }}/build/SourcePackages
-          XCODE_XCCONFIG_FILE: ${{ github.workspace }}/Configurations/PackageBuildSettings.xcconfig
         run: |
           mkdir -p build/SourcePackages
           xcodebuild \
@@ -64,7 +63,6 @@ jobs:
       - name: Build TrioKeep for iOS Simulator
         env:
           CLONED_SOURCE_PACKAGES_DIR: ${{ github.workspace }}/build/SourcePackages
-          XCODE_XCCONFIG_FILE: ${{ github.workspace }}/Configurations/PackageBuildSettings.xcconfig
         run: |
           xcodebuild \
             -project Keeper.xcodeproj \
