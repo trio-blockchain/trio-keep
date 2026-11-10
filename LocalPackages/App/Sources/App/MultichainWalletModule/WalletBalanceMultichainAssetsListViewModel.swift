@@ -95,7 +95,10 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
     private var earnOffers = [String: EarnAssetOffer]()
     private let multichainFormatter = MultichainPortfolioAmountFormatting()
     private let rateConverter = RateConverter()
+    private let trioBridgeRateClient = TrioBridgeRateClient()
     private let stakingCommentMapper: StakingItemCommentMapper
+    private var trioBridgeRateTask: Task<Void, Never>?
+    @Published private var trioBridgeRateQuote: TrioBridgeRateQuote?
     private var isActive = true
     private var needsPresentationRefresh = false
 
@@ -112,9 +115,28 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
         }
     }
 
+    var trioUSDPriceText: String {
+        guard let quote = trioBridgeRateQuote, quote.validUntil > Date() else {
+            return TKLocales.Perps.Confirmation.unavailable
+        }
+        return amountFormatter.format(
+            decimal: quote.usdPrice,
+            accessory: .fiat(.USD),
+            style: .compact
+        )
+    }
+
+    var trioWalletStatusText: String {
+        "Wallet actions unavailable"
+    }
+
     let canManage: Bool
 
     private(set) var wallet: Wallet
+
+    deinit {
+        trioBridgeRateTask?.cancel()
+    }
 
     var onSelectAsset: ((MultichainAsset) -> Void)?
     var onSelectStakingItem: ((
@@ -159,7 +181,7 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
         self.tonStakingAPYProvider = tonStakingAPYProvider
         self.tonStakingAPYTextFormatter = tonStakingAPYTextFormatter
         self.earnAssetOffersRepository = earnAssetOffersRepository
-        self.canManage = canManage
+        self.canManage = canManage && TrioNetworkConfiguration.assetManagementEnabled
         stakingCommentMapper = StakingItemCommentMapper(amountFormatter: amountFormatter)
 
         appSettingsStore.addObserver(self) { observer, event in
@@ -293,13 +315,44 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
         else {
             return false
         }
+        let trioAssets = portfolio.assets.filter {
+            $0.asset.assetId.hasPrefix(TrioNetworkConfiguration.assetIdPrefix) && !$0.isHidden
+        }
+        if trioAssets.isEmpty {
+            guard !portfolio.assets.isEmpty || !portfolio.fiatPrice.isEmpty || portfolio.perpsFiatPrice != nil else { return false }
+            portfolioStore.setPortfolio(
+                MultichainPortfolio(
+                    fiatPrice: [:],
+                    assets: [],
+                    accountsIdentifier: portfolio.accountsIdentifier,
+                    currencyCode: portfolio.currencyCode,
+                    hidesDustBalances: portfolio.hidesDustBalances,
+                    perpsFiatPrice: nil
+                ),
+                wallet: wallet
+            )
+            return false
+        }
         multichainAssetBalanceProvider.restoreCache(
-            assets: portfolio.assets,
+            assets: trioAssets,
             multichainState: multichainState
         )
+        if !portfolio.fiatPrice.isEmpty || trioAssets.count != portfolio.assets.count || portfolio.perpsFiatPrice != nil {
+            portfolioStore.setPortfolio(
+                MultichainPortfolio(
+                    fiatPrice: [:],
+                    assets: trioAssets,
+                    accountsIdentifier: portfolio.accountsIdentifier,
+                    currencyCode: portfolio.currencyCode,
+                    hidesDustBalances: portfolio.hidesDustBalances,
+                    perpsFiatPrice: nil
+                ),
+                wallet: wallet
+            )
+        }
         state = state.settingRowData(
             makeRowData(
-                assets: portfolio.assets,
+                assets: trioAssets,
                 displayCurrency: displayCurrency,
                 isMoreAssetsExpanded: false,
                 hidesDustBalances: portfolio.hidesDustBalances
@@ -309,6 +362,7 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
     }
 
     func loadAssets() async {
+        refreshTrioBridgeRate()
         let previous = state.answer
         state.task?.cancel()
         let task = Task { @MainActor [weak self] in
@@ -351,7 +405,9 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
             )
             guard !Task.isCancelled else { return }
 
-            let visibleAssets = page.assets.filter { !$0.isHidden }
+            let visibleAssets = page.assets.filter {
+                !$0.isHidden && $0.asset.assetId.hasPrefix(TrioNetworkConfiguration.assetIdPrefix)
+            }
             await loadEarnOffers(assetIds: visibleAssets.map(\.asset.assetId))
             guard !Task.isCancelled else { return }
             multichainAssetBalanceProvider.primeCache(
@@ -367,12 +423,12 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
             state = .answered(.rows(rowData))
             portfolioStore.setPortfolio(
                 MultichainPortfolio(
-                    fiatPrice: page.fiatPrice,
+                    fiatPrice: [:],
                     assets: rowData.assets,
                     accountsIdentifier: multichainState.accountsIdentifier,
                     currencyCode: displayCurrency.code.lowercased(),
                     hidesDustBalances: appSettings.hidesDustBalances,
-                    perpsFiatPrice: page.perpsFiatPrice ?? portfolioStore.getState()[wallet]?.perpsFiatPrice
+                    perpsFiatPrice: nil
                 ),
                 wallet: wallet,
                 requestToken: requestToken
@@ -421,7 +477,7 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
         hidesDustBalances: Bool
     ) -> RowData {
         let visibleAssets = assets.filter {
-            $0.asset.chain != nil
+            $0.asset.assetId.hasPrefix(TrioNetworkConfiguration.assetIdPrefix) && !$0.isHidden
         }
 
         let isSecureMode = appSettingsStore.getState().isSecureMode
@@ -629,10 +685,15 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
             ),
             multichainEnabled: true
         )
-        let unitPrice = multichainFormatter.lookupDouble(
-            in: item.price.prices,
-            currency: displayCurrency
-        ) ?? 0
+        let isTrioNativeAsset = item.asset.assetId == TrioNetworkConfiguration.nativeCoinAssetId
+        let unitPrice: Decimal? = if isTrioNativeAsset {
+            displayCurrency == .USD ? validTrioUSDPrice : nil
+        } else {
+            multichainFormatter.lookupDouble(
+                in: item.price.prices,
+                currency: displayCurrency
+            ).map { Decimal($0) }
+        }
         let balance = isSecureMode
             ? String.secureModeValueShort
             : multichainFormatter.formatAmount(
@@ -640,28 +701,42 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
                 fractionDigits: item.asset.decimals,
                 amountFormatter: amountFormatter
             )
-        let fiatTotal = multichainFormatter.convertedAmount(
-            for: item,
-            currency: displayCurrency
-        ) ?? .zero
+        let fiatTotal: Decimal? = if isTrioNativeAsset {
+            if displayCurrency == .USD, let unitPrice {
+                multichainFormatter.decimalAmount(
+                    amount: item.balance,
+                    fractionDigits: item.asset.decimals
+                ) * unitPrice
+            } else {
+                nil
+            }
+        } else {
+            multichainFormatter.convertedAmount(
+                for: item,
+                currency: displayCurrency
+            )
+        }
 
-        let priceText = amountFormatter.format(
-            decimal: Decimal(unitPrice),
-            accessory: .fiat(displayCurrency),
-            style: .compact
-        )
-        let fiatText = isSecureMode
-            ? String.secureModeValueShort
-            : amountFormatter.format(
-                decimal: fiatTotal,
-                accessory: .fiat(displayCurrency),
+        let priceText = unitPrice.map {
+            amountFormatter.format(
+                decimal: $0,
+                accessory: .fiat(isTrioNativeAsset ? .USD : displayCurrency),
                 style: .compact
             )
+        } ?? TKLocales.Perps.Confirmation.unavailable
+        let fiatText = isSecureMode
+            ? String.secureModeValueShort
+            : fiatTotal.map {
+                amountFormatter.format(
+                    decimal: $0,
+                    accessory: .fiat(displayCurrency),
+                    style: .compact
+                )
+            } ?? TKLocales.Perps.Confirmation.unavailable
 
-        let diff24h = multichainFormatter.lookupString(
-            in: item.price.diff24h,
-            currency: displayCurrency
-        )
+        let diff24h = isTrioNativeAsset
+            ? nil
+            : multichainFormatter.lookupString(in: item.price.diff24h, currency: displayCurrency)
         let deltaPositive: Bool = {
             guard let diff24h else { return true }
             let trimmed = diff24h.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -684,7 +759,7 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
 
         return AssetBalanceRowCellContent(
             id: item.asset.assetId,
-            title: item.asset.symbol,
+            title: isTrioNativeAsset ? "TRI" : item.asset.symbol,
             badge: badge,
             apy: apyText(for: item.asset.assetId),
             displayMode: .includingDiffs(
@@ -732,6 +807,41 @@ final class WalletBalanceMultichainAssetsListViewModel: ObservableObject {
         }
         return false
     }
+
+    private func isTrioNativeCoin(_ asset: MultichainAsset) -> Bool {
+        asset.asset.assetId == TrioNetworkConfiguration.nativeCoinAssetId
+    }
+
+    private var validTrioUSDPrice: Decimal? {
+        guard let quote = trioBridgeRateQuote, quote.validUntil > Date() else { return nil }
+        return quote.usdPrice
+    }
+
+    private func refreshTrioBridgeRate() {
+        trioBridgeRateTask?.cancel()
+        trioBridgeRateQuote = nil
+        refreshPresentation()
+        trioBridgeRateTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let quote = await trioBridgeRateClient.loadUSDQuote()
+            guard !Task.isCancelled else { return }
+            trioBridgeRateQuote = quote
+            refreshPresentation()
+            guard let quote else { return }
+
+            let delay = quote.validUntil.timeIntervalSinceNow
+            guard delay > 0, delay < Double(UInt64.max) / 1_000_000_000 else { return }
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, trioBridgeRateQuote == quote else { return }
+            trioBridgeRateQuote = nil
+            refreshPresentation()
+        }
+    }
+
 }
 
 private extension WalletBalanceMultichainAssetsListViewModel.State {

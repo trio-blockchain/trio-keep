@@ -57,13 +57,19 @@ public final class APIAssembly {
     // MARK: - Internal
 
     var apiProvider: APIProvider {
-        APIProvider { [api, testnetAPI] network in
-            switch network {
-            case .mainnet: return api
-            case .testnet: return testnetAPI
-            }
+        APIProvider { [unavailableNetworkAPI] _ in
+            // This app's `.mainnet` is Trio (global ID 1414678863), not TON mainnet.
+            // Until the Trio reader is connected, fail closed instead of sending wallet
+            // lookups or balance requests to TonAPI.
+            unavailableNetworkAPI
         }
     }
+
+    private lazy var unavailableNetworkAPI: API = API(
+        hostProvider: UnavailableAPIHostProvider(),
+        urlSession: urlSession,
+        configuration: configurationAssembly.configuration
+    )
 
     lazy var api: API = API(
         hostProvider: tonApiHostProvider,
@@ -88,11 +94,9 @@ public final class APIAssembly {
     }
 
     var streamingAPIV2Provider: StreamingAPIV2Provider {
-        StreamingAPIV2Provider { [streamingAPIV2Task, testnetStreamingAPIV2Task] network in
-            switch network {
-            case .mainnet: return await streamingAPIV2Task.value
-            case .testnet: return await testnetStreamingAPIV2Task.value
-            }
+        StreamingAPIV2Provider { _ in
+            // TonAPI streaming has no Trio chain support.
+            nil
         }
     }
 

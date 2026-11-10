@@ -7,6 +7,10 @@ struct WalletBalanceMultichainAssetsListView: View {
     let showsSkeleton: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if !showsSkeleton {
+                trioBridgeRateRow
+                    .padding(.bottom, 12)
+            }
             if showsSkeleton {
                 listTitle
                 cellsGroup {
@@ -29,6 +33,27 @@ struct WalletBalanceMultichainAssetsListView: View {
                 }
             }
         }
+    }
+
+    private var trioBridgeRateRow: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("TRI / USD bridge rate")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.textPrimary)
+                Text(viewModel.trioWalletStatusText)
+                    .font(.footnote)
+                    .foregroundStyle(.textSecondary)
+            }
+            Spacer(minLength: 12)
+            Text(viewModel.trioUSDPriceText)
+                .font(.body.monospacedDigit())
+                .foregroundStyle(.textPrimary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.backgroundContent)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     private func cellsGroup(@ViewBuilder content: () -> some View) -> some View {

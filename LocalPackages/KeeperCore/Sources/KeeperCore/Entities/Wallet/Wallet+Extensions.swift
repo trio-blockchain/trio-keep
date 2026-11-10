@@ -167,28 +167,15 @@ public extension Wallet {
     }
 
     var isTonconnectAvailable: Bool {
-        switch kind {
-        case .regular:
-            return true
-        case .lockup:
-            return false
-        case .watchonly:
-            return false
-        case .signer:
-            return false
-        case .ledger:
-            return true
-        case .keystone:
-            return true
-        }
+        false
     }
 
     var isGaslessAvailable: Bool {
-        isW5Generation
+        false
     }
 
     var isTonConnectSignMessageAvailable: Bool {
-        kind == .regular && isW5
+        false
     }
 
     var isV4R2: Bool {
@@ -220,20 +207,16 @@ public extension Wallet {
     }
 
     var isSendAvailable: Bool {
-        switch kind {
-        case .regular:
-            return true
-        case .lockup:
-            return false
-        case .watchonly:
-            return false
-        case .signer:
-            return true
-        case .ledger:
-            return true
-        case .keystone:
-            return true
-        }
+        false
+    }
+
+    /// Enforces the chain domain separator before any signing flow can use a wallet.
+    var isTrioSigningVersionSupported: Bool {
+        guard network.isTrioMainnet,
+              let version = try? contractVersion,
+              version.usesNetworkSeparatedWalletId
+        else { return false }
+        return true
     }
 
     var isBiometryAvailable: Bool {

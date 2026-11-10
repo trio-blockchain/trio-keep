@@ -15,6 +15,7 @@ final class JettonBalanceServiceImplementation: JettonBalanceService {
     }
 
     func loadJettonsBalance(wallet: Wallet, currency: Currency) async throws -> [JettonBalance] {
+        guard !wallet.network.isTrioMainnet else { return [] }
         let currencies = Array(Set([Currency.USD, Currency.GRAM, currency]))
         let tokensBalance = try await apiProvider.api(wallet.network).getAccountJettonsBalances(
             address: wallet.address,

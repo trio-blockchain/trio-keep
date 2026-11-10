@@ -52,6 +52,14 @@ final class WalletTransferSignCoordinator: RouterCoordinator<ViewControllerRoute
     }
 
     override func start() {
+        guard wallet.isTrioSigningVersionSupported else {
+            didFail?(.failedToSign(message: "Trio signing requires a stable V5R1 wallet; V3/V4/V5 Beta are unsupported."))
+            return
+        }
+        guard TrioNetworkConfiguration.transactionSubmissionEnabled else {
+            didFail?(.failedToSign(message: TKLocales.Perps.Confirmation.unavailable))
+            return
+        }
         handleSign()
     }
 

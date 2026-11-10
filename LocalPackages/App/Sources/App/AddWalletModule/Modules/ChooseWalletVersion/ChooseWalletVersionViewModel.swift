@@ -47,7 +47,10 @@ final class ChooseWalletVersionViewModel: ObservableObject, ChooseWalletVersionM
         tonRate: Rates.Rate?,
         currency: Currency
     ) {
-        let sortedWallets = wallets.sorted { $0.revision > $1.revision }
+        let supportedWallets = network.isTrioMainnet
+            ? wallets.filter { $0.revision.usesNetworkSeparatedWalletId }
+            : wallets
+        let sortedWallets = supportedWallets.sorted { $0.revision > $1.revision }
         self.wallets = sortedWallets
         self.amountFormatter = amountFormatter
         self.network = network

@@ -1,0 +1,122 @@
+name: TrioKeep iOS device archive
+
+on:
+  push:
+    branches:
+      - main
+      - codex/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triokeep-ios-device-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26-intel
+    timeout-minutes: 90
+    steps:
+      - name: Check out TrioKeep
+        uses: actions/checkout@v7
+
+      - name: Select Xcode 26.6
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Create build-only Firebase configuration
+        shell: bash
+        run: |
+          mkdir -p Keeper/Resources/Firebase/Keeper
+          cat > Keeper/Resources/Firebase/Keeper/GoogleService-Info.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>GOOGLE_APP_ID</key>
+            <string>1:000000000000:ios:0000000000000000000000</string>
+            <key>GCM_SENDER_ID</key>
+            <string>000000000000</string>
+            <key>BUNDLE_ID</key>
+            <string>com.investortonnft.triokeep</string>
+            <key>PROJECT_ID</key>
+            <string>triokeep-ci-build-only</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Resolve Swift packages
+        env:
+          CLONED_SOURCE_PACKAGES_DIR: ${{ github.workspace }}/build/SourcePackages
+        run: |
+          mkdir -p build/SourcePackages
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project Keeper.xcodeproj \
+            -scheme Keeper \
+            -clonedSourcePackagesDirPath build/SourcePackages
+
+      - name: Archive TrioKeep for iPhone without signing
+        env:
+          CLONED_SOURCE_PACKAGES_DIR: ${{ github.workspace }}/build/SourcePackages
+        run: |
+          xcodebuild \
+            -project Keeper.xcodeproj \
+            -scheme Keeper \
+            -configuration KeeperRelease \
+            -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
+            -archivePath build/TrioKeep-iOS-unsigned.xcarchive \
+            -resultBundlePath build/TrioKeep-iOS-device.xcresult \
+            -derivedDataPath build/DerivedData \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
+
+      - name: Package unsigned IPA and archive
+        if: always()
+        shell: bash
+        run: |
+          archive_path="build/TrioKeep-iOS-unsigned.xcarchive"
+          if [[ -d "$archive_path" ]]; then
+            ditto -c -k --sequesterRsrc --keepParent \
+              "$archive_path" build/TrioKeep-iOS-unsigned.xcarchive.zip
+
+            app_path="$archive_path/Products/Applications/Keeper.app"
+            if [[ -d "$app_path" ]]; then
+              mkdir -p build/unsigned-ipa/Payload
+              ditto "$app_path" build/unsigned-ipa/Payload/Keeper.app
+              (cd build/unsigned-ipa && /usr/bin/zip -qr ../TrioKeep-iOS-unsigned.ipa Payload)
+            fi
+          fi
+
+      - name: Upload unsigned iPhone artifacts
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: TrioKeep-iOS-unsigned-${{ github.run_number }}
+          path: |
+            build/TrioKeep-iOS-unsigned.xcarchive.zip
+            build/TrioKeep-iOS-unsigned.ipa
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Xcode archive diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: TrioKeep-iOS-xcode-result-${{ github.run_number }}
+          path: build/TrioKeep-iOS-device.xcresult
+          if-no-files-found: warn
+          retention-days: 14

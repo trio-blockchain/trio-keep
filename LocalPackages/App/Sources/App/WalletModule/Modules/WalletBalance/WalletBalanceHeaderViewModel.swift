@@ -300,9 +300,13 @@ final class WalletBalanceHeaderViewModel {
         let withdrawButton = WalletBalanceHeaderButtonsRedesignView.Model.Button(
             title: TKLocales.WalletButtons.send,
             icon: .TKUIKit.Icons.Size28.arrowUpOutline,
-            isEnabled: wallet.isSendEnable,
+            isEnabled: TrioNetworkConfiguration.walletActionsEnabled &&
+                TrioNetworkConfiguration.transactionSubmissionEnabled && wallet.isSendEnable,
             action: { [weak self] in
-                guard let self else { return }
+                guard let self,
+                      TrioNetworkConfiguration.walletActionsEnabled,
+                      TrioNetworkConfiguration.transactionSubmissionEnabled
+                else { return }
                 tooltipsService.didPerformTooltipTargetAction(id: .walletBalanceWithdraw)
                 onWithdraw?(wallet)
             }
@@ -310,9 +314,9 @@ final class WalletBalanceHeaderViewModel {
         let depositButton = WalletBalanceHeaderButtonsRedesignView.Model.Button(
             title: TKLocales.WalletButtons.deposit,
             icon: .TKUIKit.Icons.Size28.arrowDownOutline,
-            isEnabled: wallet.isReceiveEnable,
+            isEnabled: TrioNetworkConfiguration.walletActionsEnabled && wallet.isReceiveEnable,
             action: { [weak self] in
-                guard let self else { return }
+                guard let self, TrioNetworkConfiguration.walletActionsEnabled else { return }
                 onDeposit?(wallet)
             }
         )
@@ -321,9 +325,9 @@ final class WalletBalanceHeaderViewModel {
             return WalletBalanceHeaderButtonsRedesignView.Model.Button(
                 title: TKLocales.WalletButtons.swap,
                 icon: .TKUIKit.Icons.Size28.swapHorizontalOutline,
-                isEnabled: wallet.isSwapEnable,
+                isEnabled: TrioNetworkConfiguration.walletActionsEnabled && wallet.isSwapEnable,
                 action: { [weak self] in
-                    guard let self else { return }
+                    guard let self, TrioNetworkConfiguration.walletActionsEnabled else { return }
                     onSwap?(wallet)
                 }
             )
@@ -333,9 +337,9 @@ final class WalletBalanceHeaderViewModel {
             return WalletBalanceHeaderButtonsRedesignView.Model.Button(
                 title: TKLocales.WalletButtons.stake,
                 icon: .TKUIKit.Icons.Size28.stakingOutline,
-                isEnabled: wallet.isStakeEnable,
+                isEnabled: TrioNetworkConfiguration.walletActionsEnabled && wallet.isStakeEnable,
                 action: { [weak self] in
-                    guard let self else { return }
+                    guard let self, TrioNetworkConfiguration.walletActionsEnabled else { return }
                     onStake?(wallet)
                 }
             )

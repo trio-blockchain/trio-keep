@@ -9,6 +9,12 @@ import TonSwift
         .v5R1
     }
 
+    /// Only stable V5R1 mixes the network global ID into wallet_id for Trio.
+    /// V3/V4 and the earlier V5 beta format are not admitted for Trio signing.
+    public var usesNetworkSeparatedWalletId: Bool {
+        self == .v5R1
+    }
+
     private var intValue: Int {
         switch self {
         case .v3R1:

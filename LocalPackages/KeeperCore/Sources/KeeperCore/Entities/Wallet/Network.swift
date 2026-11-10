@@ -11,6 +11,12 @@ import TonSwift
 }
 
 public extension Network {
+    /// This fork reuses the app's mainnet case for Trio's confirmed global ID.
+    /// Do not treat it as TON mainnet when selecting providers.
+    var isTrioMainnet: Bool {
+        rawValue == 1_414_678_863
+    }
+
     /// ChainKit detects TON addresses by format alone; the test-only flag lives in the tag byte and
     /// stays invisible to it, so a testnet address remains a valid TON candidate on mainnet.
     func matchesTonAddress(_ address: FriendlyAddress) -> Bool {

@@ -44,6 +44,12 @@ struct TestnetAPIHostProvider: APIHostProvider {
     }
 }
 
+struct UnavailableAPIHostProvider: APIHostProvider {
+    var basePath: String {
+        get async { "" }
+    }
+}
+
 struct API {
     private let hostProvider: APIHostProvider
     private let urlSession: URLSession
@@ -61,7 +67,10 @@ struct API {
 
     private func serverURL() async throws -> URL {
         let basePath = await hostProvider.basePath
-        guard let url = URL(string: basePath) else {
+        guard let url = URL(string: basePath),
+              url.scheme == "https",
+              url.host != nil
+        else {
             throw APIError.incorrectURL
         }
         return url

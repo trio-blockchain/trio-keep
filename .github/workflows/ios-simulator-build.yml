@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: triokeep-ios-${{ github.ref }}
+  group: triokeep-ios-simulator-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Check out TrioKeep
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Select Xcode 26.6
         run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -89,7 +89,7 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$app_path" build/artifacts/TrioKeep-simulator.zip
 
       - name: Upload simulator build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: TrioKeep-iOS-simulator-${{ github.run_number }}
           path: build/artifacts/TrioKeep-simulator.zip

@@ -39,12 +39,17 @@ public extension SendService {
 
 final class SendServiceImplementation: SendService {
     private let apiProvider: APIProvider
+    private let trioNetworkClient: TrioNetworkClient
 
-    init(apiProvider: APIProvider) {
+    init(apiProvider: APIProvider, trioNetworkClient: TrioNetworkClient = TrioNetworkClient()) {
         self.apiProvider = apiProvider
+        self.trioNetworkClient = trioNetworkClient
     }
 
     func loadSeqno(wallet: Wallet) async throws -> UInt64 {
+        if wallet.network.isTrioMainnet {
+            return try await trioNetworkClient.loadWalletSeqno(wallet: wallet)
+        }
         try await UInt64(apiProvider.api(wallet.network).getSeqno(address: wallet.address))
     }
 
@@ -60,11 +65,19 @@ final class SendServiceImplementation: SendService {
     }
 
     func sendTransaction(boc: String, wallet: Wallet, headers: [String: String]) async throws {
+        if wallet.network.isTrioMainnet {
+            try await trioNetworkClient.sendSignedMessage(boc: boc, wallet: wallet)
+            return
+        }
         try await apiProvider.api(wallet.network)
             .sendTransaction(boc: boc, headers: headers)
     }
 
     func sendTransactions(batch: [String], wallet: Wallet) async throws {
+        if wallet.network.isTrioMainnet {
+            try await trioNetworkClient.sendSignedMessages(batch, wallet: wallet)
+            return
+        }
         try await apiProvider.api(wallet.network)
             .sendTransactions(batch: batch)
     }

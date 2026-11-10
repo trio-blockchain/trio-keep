@@ -57,6 +57,7 @@ protocol ActiveWalletsService {
 
 final class ActiveWalletsServiceImplementation: ActiveWalletsService {
     private let apiProvider: APIProvider
+    private let trioNetworkClient: TrioNetworkClient
     private let jettonsBalanceService: JettonBalanceService
     private let accountNFTService: AccountNFTService
     private let walletsService: WalletsService
@@ -65,9 +66,11 @@ final class ActiveWalletsServiceImplementation: ActiveWalletsService {
         apiProvider: APIProvider,
         jettonsBalanceService: JettonBalanceService,
         accountNFTService: AccountNFTService,
-        walletsService: WalletsService
+        walletsService: WalletsService,
+        trioNetworkClient: TrioNetworkClient = TrioNetworkClient()
     ) {
         self.apiProvider = apiProvider
+        self.trioNetworkClient = trioNetworkClient
         self.jettonsBalanceService = jettonsBalanceService
         self.accountNFTService = accountNFTService
         self.walletsService = walletsService
@@ -81,6 +84,26 @@ final class ActiveWalletsServiceImplementation: ActiveWalletsService {
         currency: Currency,
         checkHistory: Bool
     ) async throws -> ActiveWalletModel {
+        if network.isTrioMainnet {
+            guard revision.usesNetworkSeparatedWalletId else {
+                throw TrioNetworkClient.ClientError.invalidWalletAddress
+            }
+            let accountState = try await trioNetworkClient.loadWalletAccountState(address: address)
+            let balanceAmount = accountState?.balanceNano ?? 0
+            return ActiveWalletModel(
+                id: id,
+                revision: revision,
+                address: address,
+                isActive: accountState?.status == "active" || balanceAmount > 0,
+                balance: Balance(
+                    tonBalance: TonBalance(amount: balanceAmount),
+                    jettonsBalance: []
+                ),
+                nfts: [],
+                history: .unknown
+            )
+        }
+
         async let accountTask = self.apiProvider.api(network).getAccountInfo(accountId: address.toRaw())
         async let jettonsBalanceTask = try await self.apiProvider.api(network).getAccountJettonsBalances(
             address: address,
@@ -139,7 +162,9 @@ final class ActiveWalletsServiceImplementation: ActiveWalletsService {
         currency: Currency,
         checkHistory: Bool
     ) async throws -> [ActiveWalletModel] {
-        let revisions = WalletContractVersion.allCases
+        let revisions = network.isTrioMainnet
+            ? [WalletContractVersion.currentVersion]
+            : WalletContractVersion.allCases
 
         return try await withThrowingTaskGroup(of: ActiveWalletModel.self, returning: [ActiveWalletModel].self) { taskGroup in
             for revision in revisions {
@@ -196,6 +221,9 @@ final class ActiveWalletsServiceImplementation: ActiveWalletsService {
         currency: Currency,
         checkHistory: Bool
     ) async throws -> [ActiveWalletModel] {
+        let accounts = network.isTrioMainnet
+            ? accounts.filter { $0.revision.usesNetworkSeparatedWalletId }
+            : accounts
         return try await withThrowingTaskGroup(of: ActiveWalletModel.self, returning: [ActiveWalletModel].self) { taskGroup in
             for account in accounts {
                 taskGroup.addTask {

@@ -268,19 +268,25 @@ final class MultichainWalletViewModel: ObservableObject {
     }
 
     func tapSend() {
+        guard TrioNetworkConfiguration.walletActionsEnabled,
+              TrioNetworkConfiguration.transactionSubmissionEnabled
+        else { return }
         tooltipsService.didPerformTooltipTargetAction(id: .walletBalanceWithdraw)
         onSend?(wallet)
     }
 
     func tapDeposit() {
+        guard TrioNetworkConfiguration.walletActionsEnabled else { return }
         onDeposit?(wallet)
     }
 
     func tapSwap() {
+        guard TrioNetworkConfiguration.walletActionsEnabled else { return }
         onSwap?(wallet)
     }
 
     func tapStake() {
+        guard TrioNetworkConfiguration.walletActionsEnabled else { return }
         onStake?(wallet)
     }
 
@@ -441,7 +447,9 @@ final class MultichainWalletViewModel: ObservableObject {
         configuration: Configuration
     ) -> MultichainWalletIconButtonsModel {
         let swapItem: MultichainWalletIconButtonsModel.Item? = {
-            guard !configuration.flag(\.isSwapDisable, network: wallet.network) else { return nil }
+            guard TrioNetworkConfiguration.walletActionsEnabled,
+                  !configuration.flag(\.isSwapDisable, network: wallet.network)
+            else { return nil }
             return MultichainWalletIconButtonsModel.Item(
                 title: TKLocales.WalletButtons.swap,
                 kind: .swap,
@@ -450,7 +458,9 @@ final class MultichainWalletViewModel: ObservableObject {
         }()
 
         let stakeItem: MultichainWalletIconButtonsModel.Item? = {
-            guard !configuration.flag(\.stakingDisabled, network: wallet.network) else { return nil }
+            guard TrioNetworkConfiguration.walletActionsEnabled,
+                  !configuration.flag(\.stakingDisabled, network: wallet.network)
+            else { return nil }
             return MultichainWalletIconButtonsModel.Item(
                 title: TKLocales.WalletButtons.stake,
                 kind: .stake,
@@ -462,14 +472,15 @@ final class MultichainWalletViewModel: ObservableObject {
             send: MultichainWalletIconButtonsModel.Item(
                 title: TKLocales.WalletButtons.send,
                 kind: .send,
-                isEnabled: wallet.isSendEnable
+                isEnabled: TrioNetworkConfiguration.walletActionsEnabled &&
+                    TrioNetworkConfiguration.transactionSubmissionEnabled && wallet.isSendEnable
             ),
             deposit: MultichainWalletIconButtonsModel.Item(
                 title: configuration.featureEnabled(.moonpayRampEnabled)
                     ? TKLocales.WalletButtons.buyCrypto
                     : TKLocales.WalletButtons.deposit,
                 kind: .deposit,
-                isEnabled: wallet.isReceiveEnable
+                isEnabled: TrioNetworkConfiguration.walletActionsEnabled && wallet.isReceiveEnable
             ),
             swap: swapItem,
             stake: stakeItem

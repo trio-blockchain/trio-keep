@@ -5,7 +5,7 @@ extension MultichainChain {
     var shortDisplayTitle: String {
         switch self {
         case .ton:
-            return "Trio"
+            return TKLocales.Receive.Multichain.Networks.Ton.title
         case .eth:
             return TKLocales.Receive.Multichain.Networks.Ethereum.title
         case .btc:
@@ -32,7 +32,7 @@ extension MultichainChain {
     var displayTitle: String {
         switch self {
         case .ton:
-            return "Trio"
+            return TKLocales.Receive.Multichain.Networks.Ton.displayTitle
         case .eth:
             return TKLocales.Receive.Multichain.Networks.Ethereum.displayTitle
         case .btc:

@@ -1,10 +1,12 @@
 # TrioKeep for iOS
 
-TrioKeep is the Trio-only iOS wallet forked from [`tonkeeper/ios`](https://github.com/tonkeeper/ios). It keeps the TON wallet implementation as its base and connects to the independent Trio L1 using chain ID `1414678863` (`0x5452494f`). The app exposes one supported network, Trio; TON wallets for the TON side of the bridge remain separate.
+TrioKeep is an iOS wallet project forked from [`tonkeeper/ios`](https://github.com/tonkeeper/ios). The Trio network identity recorded here is chain ID `1414678863` (`0x5452494f`), with masterchain genesis root `ADzIkkcxBIvn8aI/zPEJxy+S9pmCudIIpe3WM78QbaA=` and file hash `droQpYLSTJuS5itIhuPGD1oVOoFvloeu0mDy06yWtbo=`.
 
 This repository is derived from Tonkeeper and remains distributed under the upstream GPL-3.0 license. See [LICENSE](LICENSE) for the complete terms.
 
-The fork is under active development and is not yet a release build. Trio RPC, bridge price feed, and transaction services must be available before balances or transfers can be treated as live.
+The Trio wallet is offline and is not a release build. There is no Trio RPC URL, address derivation, or signed transaction submission yet; send actions are disabled. The wallet asset list only admits IDs under `trio/mainnet/`, so TON and other chain balances are not presented as Trio.
+
+The app requests TRI/USD from `https://investortonnft.com/api/trio/rates/TRI-USD` and accepts only the configured TON–Trio bridge source and reserve-TWAP method while the quote is valid. If the feed is missing, invalid, or expired, it shows “Unavailable” and does not use the TON rate. The endpoint currently returns HTTP 503 with `Trio bridge rate feed is not configured.`, so no TRI quote is available.
 
 ## Development
 
@@ -12,11 +14,16 @@ This directory is the iOS app; every command below runs from `ios/` (`cd ios`, o
 
 ## GitHub Actions build
 
-The `TrioKeep iOS simulator build` workflow builds an unsigned app for the iOS Simulator
-on pushes to `main` and `codex/**`, pull requests, or a manual run. Download the
-`TrioKeep-iOS-simulator-*` artifact from the Actions run. CI generates a build-only
-Firebase plist; the artifact is for simulator review and is not a signed iPhone or
-App Store release.
+The `TrioKeep iOS device archive` workflow archives the project for generic iPhone devices
+on pushes to `main` and `codex/**`, pull requests, or a manual run. It disables code signing
+and does not use signing secrets. The run uploads a zipped `.xcarchive`, an unsigned IPA
+container, and the Xcode result bundle. These artifacts are build outputs for later manual
+signing; the IPA is not installable until it has been properly signed and provisioned. CI
+generates a build-only Firebase plist. A successful archive does not indicate that Trio
+network or wallet operations are ready.
+
+The separate `TrioKeep iOS simulator build` workflow remains available and uploads its own
+simulator app artifact.
 
 ## Setup
 

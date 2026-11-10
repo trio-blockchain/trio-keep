@@ -12,6 +12,10 @@ import KeeperCoreSensitive
         mnemonic: CoreMnemonic,
         activeWallets: [ActiveWalletModel]
     ) -> Resolution {
+        let activeWallets = activeWallets.filter { $0.revision.usesNetworkSeparatedWalletId }
+        guard !activeWallets.isEmpty else {
+            return .importRevision(.currentVersion)
+        }
         switch mnemonic.type {
         case .bip39, .bip39soft:
             return resolveBip39Wallets(activeWallets: activeWallets)
